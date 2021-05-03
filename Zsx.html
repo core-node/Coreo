@@ -1,0 +1,314 @@
+<html>
+  zsx v 0.6
+  <input type="file"onchange='openFile(event)'><br>
+
+  
+  <script>
+  var writeBit =function(v)
+  {
+    writeBit.p++;
+    writeBit.b+=(v&1)<<(8-writeBit.p);
+    
+    if(writeBit.p>=8)
+    {
+      writeBit.w[writeBit.c++]=(writeBit.b);
+      writeBit.p=writeBit.b=0;
+    }
+  }
+  var writeValue = function(v,n)
+  {
+    while(n>0){
+      n--;
+      writeBit((v>>n)&1);
+    }
+  }
+  var flushWrite=function()
+  {
+    while(writeBit.p>0)
+      writeBit(0);
+  }
+  writeBit.p = 0;
+  writeBit.b = 0;
+  writeBit.c = 0;
+  writeBit.w = "";
+  
+  writeBit.writeValue = writeValue;
+  writeBit.flushWrite = flushWrite;
+  writeBit.toString = function()
+  {
+    var v ="";
+    for(x=0;x<writeBit.c;x++)
+      v += String.fromCharCode(writeBit.w[x]);
+    return v;
+  }
+  
+  function newWriter(s)
+  {
+    r = writeBit;
+    r.p=0;
+    r.b=0;
+    r.c=0;
+    r.w = new Uint8Array(s);
+    
+    return r;
+  }
+  
+  
+  
+  var readBit = function()
+  {
+    readBit.p++;
+    n = (readBit.b>>(8-readBit.p))&1;
+    if (readBit.p>=8)
+    {
+      readBit.b=readBit.r[readBit.c++];
+      readBit.p=0;
+    }
+    return n;
+  }
+  
+  var readValue = function(n)
+  {
+    var v=0;
+    while(n>0)
+    {
+      n--;
+      v=(v<<1)+readBit();
+    }
+    
+    return v;
+  }
+  
+  readBit.p=0;
+  readBit.b=0;
+  readBit.c=0;
+  readBit.r="";
+  readBit.readValue = readValue;
+  
+  function newReader(data)
+  {
+     r = readBit;
+     r.p = 0;
+     
+       //todo
+      r.r = data;
+     r.c = 0;
+     r.b = r.r[r.c++];
+    
+     return r;
+  }
+  
+function merge(left, right, arr) {
+  var a = 0;
+ 
+  while (left.length && right.length) {
+    writeBit(right[0] < left[0]?1:0);
+    arr[a++] = (right[0] < left[0]) ? right.shift() : left.shift();
+  }
+  while (left.length) {
+    arr[a++] = left.shift();
+  }
+  while (right.length) {
+    arr[a++] = right.shift();
+  }
+}
+ 
+function mergesort(arr) {
+  var len = arr.length;
+ 
+  if (len === 1) { return; }
+ 
+  var mid = Math.floor(len / 2),
+      left = arr.slice(0, mid),
+      right = arr.slice(mid);
+ 
+  mergesort(left);
+  mergesort(right);
+  merge(left, right, arr);
+}
+
+function merge_read(left, right, arr) {
+  var a = 0;
+ 
+  while (left.length && right.length) {
+    
+    arr[a++] = (readBit()==1) ? right.shift() : left.shift();
+  }
+  while (left.length) {
+    arr[a++] = left.shift();
+  }
+  while (right.length) {
+    arr[a++] = right.shift();
+  }
+}
+ 
+function mergesort_read(arr) {
+  var len = arr.length;
+ 
+  if (len === 1) { return; }
+ 
+  var mid = Math.floor(len / 2),
+      left = arr.slice(0, mid),
+      right = arr.slice(mid);
+ 
+  mergesort_read(left);
+  mergesort_read(right);
+  merge_read(left, right, arr);
+}
+  
+  
+  
+  var sx_items =100;
+  var sx_bits =8;
+  
+  function zsx(r,size,loop)
+  {
+   
+    var w= newWriter(size*2);
+    w.writeValue(size,32);
+    w.writeValue(loop,8);
+    
+    while(r.c <= size)
+    {
+      var tree=0;
+      var min=(1<<8), max=0;
+      var sorted=[];values=[];
+       for(x=0;x<sx_items;x++)
+       {
+         var n=readValue(sx_bits);
+         
+         values.push(n);
+         
+         if(!sorted[n])
+         {
+           tree++;
+           sorted[n]=0;
+         }
+        if(tree==15)break;
+         sorted[n]++;
+         if (max<(n))max=n;
+         if (min>(n))min=n;
+         
+       }
+       var index=x;
+       w.writeValue(min,sx_bits);
+       w.writeValue(max,sx_bits);
+       
+       for(x=min;x<=max;x++)
+       {
+           while(sorted[x]>0){
+           
+          sorted[x]--; writeBit(1);}
+         writeBit(0);
+         }
+         
+        
+        mergesort(values);
+        
+  
+       
+    }
+    w.flushWrite();
+    return w;
+  }
+  
+  function unzsx(r)
+  {
+    
+    
+    var size=r.readValue(32);
+    var w= newWriter(size+32);
+    w.loop=r.readValue(8);
+    
+    while(w.c < size)
+    {
+      var sorted=[];
+      var index=0;
+      var min = r.readValue(sx_bits);
+      var max = r.readValue(sx_bits);
+      var x=min;
+      
+      
+       while(x<=max)
+       {while(readBit()!=0)
+         sorted[index++]=x;
+       x++;
+       }
+       if(index==0)break;
+       var values=[];
+       if(index==0)break;
+       for(x=0;x<index;x++)
+        values.push(x);
+        
+        
+       mergesort_read(values);
+        
+        
+       for(x=0;x<index;x++){
+         w.writeValue(sorted[values.indexOf(x)],sx_bits);
+         
+         
+       }
+    }
+    return w;
+  }
+  
+  downloadBlob = function(data, fileName) {
+  var blob, url;
+  blob = new Blob([data], {
+    type: "application/jpeg"
+  });
+  url = window.URL.createObjectURL(blob);
+  downloadURL(url, fileName);
+  setTimeout(function() {
+    return window.URL.revokeObjectURL(url);
+  }, 1000);
+};
+
+downloadURL = function(data, fileName) {
+  var a;
+  a = document.createElement('a');
+  
+  a.href = data;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.style = 'display: none';
+  a.click();
+  a.remove();
+};
+  
+var openFile = function(event) {
+ var input =event.target;
+var reader = new FileReader();
+ reader.onload = function(){
+   var txt = new Uint8Array(reader.result);
+   // var sz = reader.result;
+   //txt = new Uint8Array(sz.length,);
+   // for(x=0;x<sz.length;x++)
+   //txt[x]=sz.charCodeAt(x);
+  
+  
+  console.log(txt.length);
+  var z =zsx(newReader(txt),txt.length,1);
+  console.log(z.c);
+ 
+  
+ 
+ z = unzsx(newReader(z.w));
+ 
+   console.log(z.c);
+   
+   
+   //var b= new Uint8Array(z.c);
+   //for(ix=0;ix<z.c;ix++)
+   //  b[ix]=z.w[ix];
+    
+   downloadBlob(z.toString(),"data.jpeg");
+ };
+  reader.readAsArrayBuffer(input.files[0]);
+ };
+  
+  
+  </script>
+  
+  </html>
